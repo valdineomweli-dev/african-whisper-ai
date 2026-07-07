@@ -83,9 +83,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Send high-converting WhatsApp campaigns at scale. AI-powered message generation, analytics, and contact management for African businesses." },
       { name: "author", content: "WA Blaster" },
       { property: "og:title", content: "WA Blaster — WhatsApp Bulk Messaging & AI Marketing" },
-      { property: "og:description", content: "Send high-converting WhatsApp campaigns at scale. AI-powered message generation, analytics, and contact management." },
+      { property: "og:description", content: "Send high-converting WhatsApp campaigns at scale. AI-powered message generation, analytics, and contact management for African businesses." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "WA Blaster — WhatsApp Bulk Messaging & AI Marketing" },
+      { name: "twitter:description", content: "Send high-converting WhatsApp campaigns at scale. AI-powered message generation, analytics, and contact management for African businesses." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9d412a3f-e1e8-433b-ac12-7e923bffacfb/id-preview-b6995201--219d5cea-72a3-4f5a-ae54-65a3a12d04d0.lovable.app-1783452897870.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9d412a3f-e1e8-433b-ac12-7e923bffacfb/id-preview-b6995201--219d5cea-72a3-4f5a-ae54-65a3a12d04d0.lovable.app-1783452897870.png" },
     ],
     links: [
       {
