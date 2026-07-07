@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedComposeRouteImport } from './routes/_authenticated/compose'
 import { Route as AuthenticatedCampaignsRouteImport } from './routes/_authenticated/campaigns'
+import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -58,6 +59,11 @@ const AuthenticatedCampaignsRoute = AuthenticatedCampaignsRouteImport.update({
   path: '/campaigns',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAnalyticsRoute = AuthenticatedAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCampaignsIdRoute =
   AuthenticatedCampaignsIdRouteImport.update({
     id: '/$id',
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/analytics': typeof AuthenticatedAnalyticsRoute
   '/campaigns': typeof AuthenticatedCampaignsRouteWithChildren
   '/compose': typeof AuthenticatedComposeRoute
   '/contacts': typeof AuthenticatedContactsRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/analytics': typeof AuthenticatedAnalyticsRoute
   '/campaigns': typeof AuthenticatedCampaignsRouteWithChildren
   '/compose': typeof AuthenticatedComposeRoute
   '/contacts': typeof AuthenticatedContactsRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/campaigns': typeof AuthenticatedCampaignsRouteWithChildren
   '/_authenticated/compose': typeof AuthenticatedComposeRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/analytics'
     | '/campaigns'
     | '/compose'
     | '/contacts'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/analytics'
     | '/campaigns'
     | '/compose'
     | '/contacts'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/analytics'
     | '/_authenticated/campaigns'
     | '/_authenticated/compose'
     | '/_authenticated/contacts'
@@ -196,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCampaignsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/analytics': {
+      id: '/_authenticated/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AuthenticatedAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/campaigns/$id': {
       id: '/_authenticated/campaigns/$id'
       path: '/$id'
@@ -221,6 +240,7 @@ const AuthenticatedCampaignsRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedCampaignsRoute: typeof AuthenticatedCampaignsRouteWithChildren
   AuthenticatedComposeRoute: typeof AuthenticatedComposeRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
@@ -228,6 +248,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedCampaignsRoute: AuthenticatedCampaignsRouteWithChildren,
   AuthenticatedComposeRoute: AuthenticatedComposeRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
