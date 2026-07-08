@@ -3,7 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
-import { Check, Zap } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { useProfile } from "@/lib/db-hooks";
+import { Check, Zap, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/billing")({
@@ -25,17 +27,14 @@ const PLANS = [
   },
 ];
 
-const PAYMENTS = [
-  { id: "p1", date: "2026-07-01", plan: "Pro", amount: "N$1,500", status: "Paid" },
-  { id: "p2", date: "2026-06-01", plan: "Pro", amount: "N$1,500", status: "Paid" },
-  { id: "p3", date: "2026-05-01", plan: "Pro", amount: "N$1,500", status: "Paid" },
-  { id: "p4", date: "2026-04-01", plan: "Basic", amount: "N$500", status: "Paid" },
-];
-
 function BillingPage() {
-  const currentPlan = "pro";
-  const used = 12480;
-  const limit = 60000;
+  const { data: profile } = useProfile();
+  const currentPlan = profile?.plan ?? "basic";
+  const credits = profile?.credits_remaining ?? 500;
+  const limit = 500;
+  const used = Math.max(0, limit - credits);
+  const currentName = PLANS.find((p) => p.id === currentPlan)?.name ?? "Basic";
+  const currentPrice = PLANS.find((p) => p.id === currentPlan)?.price ?? "N$500";
 
   return (
     <>
@@ -45,8 +44,8 @@ function BillingPage() {
         <div className="flex items-center gap-3">
           <Zap className="h-5 w-5 text-primary" />
           <div>
-            <p className="font-semibold">You're on the Pro plan</p>
-            <p className="text-xs text-muted-foreground">Renews on August 1, 2026 · N$1,500/month</p>
+            <p className="font-semibold">You're on the {currentName} plan</p>
+            <p className="text-xs text-muted-foreground">{credits.toLocaleString()} credits remaining · {currentPrice}/month</p>
           </div>
         </div>
         <Button variant="outline" onClick={() => toast.info("Redirect to portal")}>Manage subscription</Button>
@@ -86,39 +85,22 @@ function BillingPage() {
       </div>
 
       <Card className="p-6 mb-6">
-        <h3 className="font-semibold mb-1">Usage this month</h3>
-        <p className="text-xs text-muted-foreground mb-4">Messages sent · Pro plan cap</p>
+        <h3 className="font-semibold mb-1">Credits this cycle</h3>
+        <p className="text-xs text-muted-foreground mb-4">Messages used · {currentName} plan</p>
         <div className="flex items-center justify-between mb-2">
           <span className="text-2xl font-bold">{used.toLocaleString()}</span>
           <span className="text-sm text-muted-foreground">of {limit.toLocaleString()}</span>
         </div>
-        <Progress value={(used / limit) * 100} />
+        <Progress value={limit ? (used / limit) * 100 : 0} />
       </Card>
 
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-border font-semibold">Payment history</div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-muted-foreground border-b border-border">
-              <th className="font-medium px-4 py-2.5">Date</th>
-              <th className="font-medium py-2.5">Plan</th>
-              <th className="font-medium py-2.5">Amount</th>
-              <th className="font-medium py-2.5">Status</th>
-              <th className="font-medium px-4 py-2.5 text-right">Invoice</th>
-            </tr>
-          </thead>
-          <tbody>
-            {PAYMENTS.map((p) => (
-              <tr key={p.id} className="border-b border-border/40">
-                <td className="px-4 py-3">{p.date}</td>
-                <td className="py-3">{p.plan}</td>
-                <td className="py-3">{p.amount}</td>
-                <td className="py-3"><span className="text-primary text-xs">{p.status}</span></td>
-                <td className="px-4 py-3 text-right"><Button size="sm" variant="ghost" onClick={() => toast.success("Invoice downloaded")}>Download</Button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <EmptyState
+          icon={Receipt}
+          title="No payments yet"
+          description="Your invoices and payment history will appear here after your first billing cycle."
+        />
       </Card>
     </>
   );

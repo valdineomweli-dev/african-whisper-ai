@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { WhatsAppPreview } from "@/components/whatsapp-preview";
-import { mockContactLists } from "@/lib/mock-data";
+import { useContactLists, useContacts, requireUserId } from "@/lib/db-hooks";
+import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Send, Save, Paperclip, Loader2, Copy } from "lucide-react";
 import { generateMessages } from "@/lib/ai.functions";
 import { toast } from "sonner";
@@ -21,31 +23,52 @@ export const Route = createFileRoute("/_authenticated/compose")({
 
 function ComposePage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: lists = [] } = useContactLists();
+  const { data: contacts = [] } = useContacts();
   const [name, setName] = useState("");
-  const [listId, setListId] = useState<string>(mockContactLists[0].id);
+  const [listId, setListId] = useState<string>("all");
   const [message, setMessage] = useState("Hi {name}! ");
   const [mediaUrl, setMediaUrl] = useState<string>("");
   const [scheduled, setScheduled] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   const [aiOpen, setAiOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const list = mockContactLists.find((l) => l.id === listId);
+  const selectedList = lists.find((l) => l.id === listId);
+  const recipientCount = listId === "all" ? contacts.length : (selectedList?.contact_count ?? 0);
 
   function insertToken(t: string) {
     setMessage((m) => m + `{${t}}`);
   }
 
-  function send(draft = false) {
+  async function send(draft = false) {
     if (!name.trim()) return toast.error("Campaign name required");
     if (!message.trim()) return toast.error("Message cannot be empty");
-    toast.success(
-      draft
-        ? "Saved as draft"
-        : scheduled
-        ? `Scheduled for ${scheduleAt || "later"}`
-        : `Sending to ${list?.contact_count.toLocaleString()} contacts...`,
-    );
-    setTimeout(() => navigate({ to: "/campaigns" }), 700);
+    setSaving(true);
+    try {
+      const user_id = await requireUserId();
+      const status = draft ? "draft" : scheduled ? "scheduled" : "sending";
+      const { error } = await supabase.from("campaigns").insert({
+        user_id,
+        name: name.trim(),
+        message: message.trim(),
+        media_url: mediaUrl || null,
+        contact_list_id: listId === "all" ? null : listId,
+        status,
+        scheduled_at: scheduled && scheduleAt ? new Date(scheduleAt).toISOString() : null,
+      });
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success(
+        draft ? "Saved as draft" : scheduled ? `Scheduled for ${scheduleAt || "later"}` : `Queued for ${recipientCount.toLocaleString()} contacts`,
+      );
+      navigate({ to: "/campaigns" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save campaign");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function pickMessage(text: string) {
@@ -68,13 +91,17 @@ function ComposePage() {
             <Select value={listId} onValueChange={setListId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {mockContactLists.map((l) => (
+                <SelectItem value="all">All contacts · {contacts.length.toLocaleString()}</SelectItem>
+                {lists.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
                     {l.name} · {l.contact_count.toLocaleString()} contacts
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {contacts.length === 0 && (
+              <p className="text-xs text-muted-foreground">You have no contacts yet — add some on the Contacts page.</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -110,9 +137,9 @@ function ComposePage() {
           )}
 
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={() => send(true)}><Save className="h-4 w-4 mr-2" />Save draft</Button>
-            <Button className="flex-1 glow-primary h-11" onClick={() => send(false)}>
-              <Send className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={() => send(true)} disabled={saving}><Save className="h-4 w-4 mr-2" />Save draft</Button>
+            <Button className="flex-1 glow-primary h-11" onClick={() => send(false)} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
               {scheduled ? "Schedule campaign" : "Send now"}
             </Button>
           </div>
