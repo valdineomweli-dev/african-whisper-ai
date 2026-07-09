@@ -15,6 +15,8 @@ import { useContactLists, useContacts, requireUserId } from "@/lib/db-hooks";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Send, Save, Paperclip, Loader2, Copy } from "lucide-react";
 import { generateMessages } from "@/lib/ai.functions";
+import { sendWhatsApp, finalizeCampaign } from "@/lib/whatsapp.functions";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/compose")({
@@ -34,6 +36,12 @@ function ComposePage() {
   const [scheduleAt, setScheduleAt] = useState("");
   const [aiOpen, setAiOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState<{ open: boolean; sent: number; failed: number; total: number }>({
+    open: false,
+    sent: 0,
+    failed: 0,
+    total: 0,
+  });
 
   const selectedList = lists.find((l) => l.id === listId);
   const recipientCount = listId === "all" ? contacts.length : (selectedList?.contact_count ?? 0);
@@ -49,7 +57,7 @@ function ComposePage() {
     try {
       const user_id = await requireUserId();
       const status = draft ? "draft" : scheduled ? "scheduled" : "sending";
-      const { error } = await supabase.from("campaigns").insert({
+      const { data: created, error } = await supabase.from("campaigns").insert({
         user_id,
         name: name.trim(),
         message: message.trim(),
@@ -57,15 +65,58 @@ function ComposePage() {
         contact_list_id: listId === "all" ? null : listId,
         status,
         scheduled_at: scheduled && scheduleAt ? new Date(scheduleAt).toISOString() : null,
-      });
+      }).select("id").single();
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["campaigns"] });
-      toast.success(
-        draft ? "Saved as draft" : scheduled ? `Scheduled for ${scheduleAt || "later"}` : `Queued for ${recipientCount.toLocaleString()} contacts`,
-      );
+
+      if (draft || scheduled) {
+        toast.success(draft ? "Saved as draft" : `Scheduled for ${scheduleAt || "later"}`);
+        navigate({ to: "/campaigns" });
+        return;
+      }
+
+      // Send now: loop through contacts, call UltraMsg
+      const recipients =
+        listId === "all"
+          ? contacts
+          : contacts.filter((c) => c.group_name === selectedList?.name);
+      if (recipients.length === 0) {
+        toast.error("No contacts to send to");
+        await supabase.from("campaigns").update({ status: "draft" }).eq("id", created.id);
+        return;
+      }
+
+      setProgress({ open: true, sent: 0, failed: 0, total: recipients.length });
+      let sent = 0;
+      let failed = 0;
+      for (const contact of recipients) {
+        try {
+          const res = await sendWhatsApp({
+            data: {
+              campaignId: created.id,
+              contactId: contact.id,
+              phone: contact.phone,
+              name: contact.name,
+              message: message.trim(),
+            },
+          });
+          if (res.ok) sent += 1;
+          else failed += 1;
+        } catch {
+          failed += 1;
+        }
+        setProgress((p) => ({ ...p, sent, failed }));
+      }
+
+      await finalizeCampaign({ data: { campaignId: created.id } });
+      qc.invalidateQueries({ queryKey: ["campaigns"] });
+      qc.invalidateQueries({ queryKey: ["messages", created.id] });
+      toast.success(`Sent ${sent} of ${recipients.length}${failed ? ` · ${failed} failed` : ""}`);
+      setProgress((p) => ({ ...p, open: false }));
       navigate({ to: "/campaigns" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save campaign");
+      setProgress((p) => ({ ...p, open: false }));
     } finally {
       setSaving(false);
     }
@@ -152,6 +203,28 @@ function ComposePage() {
       </div>
 
       <AiDialog open={aiOpen} onOpenChange={setAiOpen} onPick={pickMessage} />
+
+      <Dialog open={progress.open} onOpenChange={() => { /* block manual close during send */ }}>
+        <DialogContent className="glass max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-primary" />Sending campaign
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Progress value={progress.total ? ((progress.sent + progress.failed) / progress.total) * 100 : 0} className="h-2" />
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">
+                {progress.sent + progress.failed} of {progress.total} processed
+              </span>
+              <span>
+                <span className="text-primary">{progress.sent} sent</span>
+                {progress.failed > 0 && <span className="text-destructive ml-2">{progress.failed} failed</span>}
+              </span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
