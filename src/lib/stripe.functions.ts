@@ -19,7 +19,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     const { default: Stripe } = await import("stripe");
     const secret = process.env.STRIPE_SECRET_KEY;
     if (!secret) throw new Error("Stripe not configured");
-    const stripe = new Stripe(secret, { apiVersion: "2025-02-24.acacia" as never });
+    const stripe = new Stripe(secret);
 
     const { data: profile } = await context.supabase
       .from("profiles")
