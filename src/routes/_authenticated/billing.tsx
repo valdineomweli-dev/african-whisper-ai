@@ -1,14 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { z } from "zod";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { useProfile } from "@/lib/db-hooks";
-import { Check, Zap, Receipt } from "lucide-react";
+import { createCheckoutSession } from "@/lib/stripe.functions";
+import { Check, Zap, Receipt, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/billing")({
+  validateSearch: z.object({
+    success: z.boolean().optional(),
+    canceled: z.boolean().optional(),
+    session_id: z.string().optional(),
+  }),
   component: BillingPage,
 });
 
@@ -29,6 +39,39 @@ const PLANS = [
 
 function BillingPage() {
   const { data: profile } = useProfile();
+  const search = Route.useSearch();
+  const queryClient = useQueryClient();
+  const checkout = useServerFn(createCheckoutSession);
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (search.success) {
+      toast.success("Payment successful — your plan is being activated.");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      window.history.replaceState({}, "", "/billing");
+    } else if (search.canceled) {
+      toast.info("Checkout canceled.");
+      window.history.replaceState({}, "", "/billing");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleUpgrade(planId: string) {
+    if (planId === "business") {
+      toast.info("Sales will reach out shortly");
+      return;
+    }
+    setPendingPlan(planId);
+    try {
+      const { url } = await checkout({ data: { plan: planId, origin: window.location.origin } });
+      if (!url) throw new Error("No checkout URL returned");
+      window.location.href = url;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start checkout");
+      setPendingPlan(null);
+    }
+  }
+
   const currentPlan = profile?.plan ?? "basic";
   const credits = profile?.credits_remaining ?? 500;
   const limit = 500;
@@ -72,13 +115,18 @@ function BillingPage() {
             <Button
               className={`w-full mt-6 ${p.popular ? "glow-primary" : ""}`}
               variant={p.id === currentPlan ? "outline" : p.popular ? "default" : "secondary"}
-              disabled={p.id === currentPlan}
-              onClick={() => {
-                if (p.id === "business") toast.info("Sales will reach out shortly");
-                else toast.success(`Upgrading to ${p.name}...`);
-              }}
+              disabled={p.id === currentPlan || pendingPlan !== null}
+              onClick={() => handleUpgrade(p.id)}
             >
-              {p.id === currentPlan ? "Current plan" : p.id === "business" ? "Contact sales" : "Upgrade"}
+              {pendingPlan === p.id ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redirecting…</>
+              ) : p.id === currentPlan ? (
+                "Current plan"
+              ) : p.id === "business" ? (
+                "Contact sales"
+              ) : (
+                "Upgrade"
+              )}
             </Button>
           </Card>
         ))}
