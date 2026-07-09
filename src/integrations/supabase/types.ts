@@ -182,6 +182,9 @@ export type Database = {
           gemini_api_key: string | null
           id: string
           plan: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
           user_id: string
           whatsapp_api_key: string | null
         }
@@ -194,6 +197,9 @@ export type Database = {
           gemini_api_key?: string | null
           id?: string
           plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           user_id: string
           whatsapp_api_key?: string | null
         }
@@ -206,6 +212,9 @@ export type Database = {
           gemini_api_key?: string | null
           id?: string
           plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           user_id?: string
           whatsapp_api_key?: string | null
         }
