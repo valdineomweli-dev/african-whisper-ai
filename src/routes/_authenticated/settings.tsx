@@ -100,7 +100,7 @@ function SettingsPage() {
         <TabsContent value="api">
           <Card className="p-6 max-w-2xl space-y-5">
             <MaskedField label="WhatsApp Business API key" value={waKey} onChange={setWaKey} show={showWa} onToggle={() => setShowWa((s) => !s)} />
-            <MaskedField label="Gemini API key (optional — Lovable AI is used by default)" value={geminiKey} onChange={setGeminiKey} show={showGem} onToggle={() => setShowGem((s) => !s)} />
+            <MaskedField label="Gemini API key (optional — built-in AI is used by default)" value={geminiKey} onChange={setGeminiKey} show={showGem} onToggle={() => setShowGem((s) => !s)} />
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => toast.success("Connection OK")}>Test connections</Button>
               <Button className="glow-primary" onClick={saveKeys}>Save keys</Button>
