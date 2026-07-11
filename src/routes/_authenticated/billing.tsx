@@ -24,15 +24,15 @@ export const Route = createFileRoute("/_authenticated/billing")({
 
 const PLANS = [
   {
-    id: "basic", name: "Basic", price: "N$500", popular: false,
+    id: "basic", name: "Basic", price: "$14", popular: false,
     features: ["500 messages/day", "1,000 contacts", "Basic analytics", "Email support", "1 WhatsApp number"],
   },
   {
-    id: "pro", name: "Pro", price: "N$1,500", popular: true,
+    id: "pro", name: "Pro", price: "$30", popular: true,
     features: ["2,000 messages/day", "10,000 contacts", "Advanced analytics", "Priority support", "AI message generator", "3 WhatsApp numbers"],
   },
   {
-    id: "business", name: "Business", price: "N$3,000", popular: false,
+    id: "business", name: "Business", price: "$55", popular: false,
     features: ["Unlimited messages", "Unlimited contacts", "Full analytics suite", "Dedicated support", "Full AI suite", "10 WhatsApp numbers", "Custom branding"],
   },
 ];
@@ -77,7 +77,7 @@ function BillingPage() {
   const limit = 500;
   const used = Math.max(0, limit - credits);
   const currentName = PLANS.find((p) => p.id === currentPlan)?.name ?? "Basic";
-  const currentPrice = PLANS.find((p) => p.id === currentPlan)?.price ?? "N$500";
+  const currentPrice = PLANS.find((p) => p.id === currentPlan)?.price ?? "$14";
 
   return (
     <>
