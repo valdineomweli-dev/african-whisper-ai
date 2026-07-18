@@ -80,7 +80,7 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
     const nowIso = new Date().toISOString();
     await supabase
       .from("messages")
-      .update({ status: ok ? "sent" : "failed", sent_at: ok ? nowIso : null, error_message: ok ? null : errorText })
+      .update({ status: ok ? "sent" : "failed", sent_at: ok ? nowIso : null })
       .eq("id", msgRow.id);
 
     if (ok) {
