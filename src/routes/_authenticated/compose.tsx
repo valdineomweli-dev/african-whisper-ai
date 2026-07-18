@@ -89,6 +89,7 @@ function ComposePage() {
       setProgress({ open: true, sent: 0, failed: 0, total: recipients.length });
       let sent = 0;
       let failed = 0;
+      let lastError: string | null = null;
       for (const contact of recipients) {
         try {
           const res = await sendWhatsApp({
@@ -101,9 +102,10 @@ function ComposePage() {
             },
           });
           if (res.ok) sent += 1;
-          else failed += 1;
-        } catch {
+          else { failed += 1; if (res.error) lastError = res.error; }
+        } catch (e) {
           failed += 1;
+          lastError = e instanceof Error ? e.message : String(e);
         }
         setProgress((p) => ({ ...p, sent, failed }));
       }
@@ -111,7 +113,12 @@ function ComposePage() {
       await finalizeCampaign({ data: { campaignId: created.id } });
       qc.invalidateQueries({ queryKey: ["campaigns"] });
       qc.invalidateQueries({ queryKey: ["messages", created.id] });
-      toast.success(`Sent ${sent} of ${recipients.length}${failed ? ` · ${failed} failed` : ""}`);
+      if (sent > 0) {
+        toast.success(`Sent ${sent} of ${recipients.length}${failed ? ` · ${failed} failed` : ""}`);
+      }
+      if (failed > 0 && lastError) {
+        toast.error(`${failed} failed: ${lastError}`, { duration: 10000 });
+      }
       setProgress((p) => ({ ...p, open: false }));
       navigate({ to: "/campaigns" });
     } catch (e) {
