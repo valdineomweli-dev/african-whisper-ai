@@ -20,7 +20,15 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
     const token = process.env.ULTRAMSG_TOKEN;
-    if (!instanceId || !token) throw new Error("UltraMsg is not configured");
+    if (!instanceId || !token) {
+      const missing = [
+        !instanceId ? "ULTRAMSG_INSTANCE_ID" : null,
+        !token ? "ULTRAMSG_TOKEN" : null,
+      ].filter(Boolean).join(", ");
+      throw new Error(
+        `UltraMsg is not configured on the server. Missing secret(s): ${missing}. Add them in Lovable → Project settings → Secrets (not Vercel).`,
+      );
+    }
 
     // Verify campaign ownership (RLS also enforces this)
     const { data: campaign, error: cErr } = await supabase
@@ -51,17 +59,28 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: form.toString(),
       });
-      const json = (await res.json().catch(() => ({}))) as { sent?: string | boolean; error?: unknown; message?: string };
+      const raw = await res.text();
+      let json: { sent?: string | boolean; error?: unknown; message?: string } = {};
+      try { json = JSON.parse(raw); } catch { /* keep raw */ }
       ok = res.ok && (json.sent === "true" || json.sent === true);
-      if (!ok) errorText = json.message || JSON.stringify(json).slice(0, 300);
+      if (!ok) {
+        const detail =
+          (typeof json.error === "string" ? json.error : json.error ? JSON.stringify(json.error) : null) ||
+          json.message ||
+          raw ||
+          `HTTP ${res.status}`;
+        errorText = `UltraMsg ${res.status}: ${String(detail).slice(0, 400)}`;
+        console.error("[UltraMsg] send failed", { status: res.status, to, body: raw.slice(0, 500) });
+      }
     } catch (e) {
-      errorText = e instanceof Error ? e.message : "network error";
+      errorText = e instanceof Error ? `Network error: ${e.message}` : "Network error";
+      console.error("[UltraMsg] network error", e);
     }
 
     const nowIso = new Date().toISOString();
     await supabase
       .from("messages")
-      .update({ status: ok ? "sent" : "failed", sent_at: ok ? nowIso : null })
+      .update({ status: ok ? "sent" : "failed", sent_at: ok ? nowIso : null, error_message: ok ? null : errorText })
       .eq("id", msgRow.id);
 
     if (ok) {
