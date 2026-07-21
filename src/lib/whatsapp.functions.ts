@@ -18,15 +18,10 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
-    const token = process.env.ULTRAMSG_TOKEN;
-    if (!instanceId || !token) {
-      const missing = [
-        !instanceId ? "ULTRAMSG_INSTANCE_ID" : null,
-        !token ? "ULTRAMSG_TOKEN" : null,
-      ].filter(Boolean).join(", ");
+    const token = process.env.FONNTE_TOKEN;
+    if (!token) {
       throw new Error(
-        `UltraMsg is not configured on the server. Missing secret(s): ${missing}. Add them in Lovable → Project settings → Secrets (not Vercel).`,
+        "Fonnte is not configured on the server. Missing secret: FONNTE_TOKEN. Add it in Lovable → Project settings → Secrets.",
       );
     }
 
@@ -53,28 +48,33 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
     let ok = false;
     let errorText: string | null = null;
     try {
-      const form = new URLSearchParams({ token, to, body });
-      const res = await fetch(`https://api.ultramsg.com/${instanceId}/messages/chat`, {
+      const form = new URLSearchParams({ target: to, message: body });
+      const res = await fetch("https://api.fonnte.com/send", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: token,
+        },
         body: form.toString(),
       });
       const raw = await res.text();
-      let json: { sent?: string | boolean; error?: unknown; message?: string } = {};
+      let json: { status?: boolean; reason?: string; detail?: string; error?: unknown; message?: string } = {};
       try { json = JSON.parse(raw); } catch { /* keep raw */ }
-      ok = res.ok && (json.sent === "true" || json.sent === true);
+      ok = res.ok && json.status === true;
       if (!ok) {
         const detail =
+          json.reason ||
+          json.detail ||
           (typeof json.error === "string" ? json.error : json.error ? JSON.stringify(json.error) : null) ||
           json.message ||
           raw ||
           `HTTP ${res.status}`;
-        errorText = `UltraMsg ${res.status}: ${String(detail).slice(0, 400)}`;
-        console.error("[UltraMsg] send failed", { status: res.status, to, body: raw.slice(0, 500) });
+        errorText = `Fonnte ${res.status}: ${String(detail).slice(0, 400)}`;
+        console.error("[Fonnte] send failed", { status: res.status, to, body: raw.slice(0, 500) });
       }
     } catch (e) {
       errorText = e instanceof Error ? `Network error: ${e.message}` : "Network error";
-      console.error("[UltraMsg] network error", e);
+      console.error("[Fonnte] network error", e);
     }
 
     const nowIso = new Date().toISOString();
