@@ -54,7 +54,7 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
     let ok = false;
     let errorText: string | null = null;
     try {
-      const form = new URLSearchParams({ target: to, message: body });
+      const form = new URLSearchParams({ target: to, message: body, countryCode: "0" });
       const res = await fetch("https://api.fonnte.com/send", {
         method: "POST",
         headers: {
