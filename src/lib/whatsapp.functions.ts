@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 function normalizePhone(raw: string): string {
+  // Strip spaces, dashes, brackets, and the leading '+' sign.
+  // Do NOT add or change any country code — use the number exactly as stored.
+  // Examples:
+  //   +264818151132 → 264818151132
+  //   264818151132  → 264818151132
+  //   0818151132    → 0818151132
   return raw.replace(/[^\d]/g, "");
 }
 
