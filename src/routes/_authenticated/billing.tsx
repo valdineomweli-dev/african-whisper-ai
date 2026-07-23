@@ -58,10 +58,6 @@ function BillingPage() {
   }, []);
 
   async function handleUpgrade(planId: string) {
-    if (planId === "business") {
-      toast.info("Sales will reach out shortly");
-      return;
-    }
     setPendingPlan(planId);
     try {
       const { url } = await checkout({ data: { plan: planId, origin: window.location.origin } });
@@ -124,8 +120,6 @@ function BillingPage() {
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redirecting…</>
               ) : p.id === currentPlan ? (
                 "Current plan"
-              ) : p.id === "business" ? (
-                "Contact sales"
               ) : (
                 "Upgrade"
               )}
