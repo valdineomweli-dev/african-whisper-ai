@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { PageHeader } from "@/components/page-header";
 import { WhatsAppPreview } from "@/components/whatsapp-preview";
 import { useContactLists, useContacts, requireUserId } from "@/lib/db-hooks";
+import { useProfile } from "@/lib/db-hooks";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Send, Save, Paperclip, Loader2, Copy } from "lucide-react";
 import { generateMessages } from "@/lib/ai.functions";
@@ -28,6 +29,7 @@ function ComposePage() {
   const qc = useQueryClient();
   const { data: lists = [] } = useContactLists();
   const { data: contacts = [] } = useContacts();
+  const { data: profile } = useProfile();
   const [name, setName] = useState("");
   const [listId, setListId] = useState<string>("all");
   const [message, setMessage] = useState("Hi {name}! ");
@@ -53,6 +55,9 @@ function ComposePage() {
   async function send(draft = false) {
     if (!name.trim()) return toast.error("Campaign name required");
     if (!message.trim()) return toast.error("Message cannot be empty");
+    if (!draft && !scheduled && (profile?.credits_remaining ?? 0) <= 0) {
+      return toast.error("No credits remaining. Please upgrade your plan.");
+    }
     setSaving(true);
     try {
       const user_id = await requireUserId();
@@ -103,6 +108,7 @@ function ComposePage() {
           });
           if (res.ok) sent += 1;
           else { failed += 1; if (res.error) lastError = res.error; }
+          if ("noCredits" in res && res.noCredits) break;
         } catch (e) {
           failed += 1;
           lastError = e instanceof Error ? e.message : String(e);
@@ -112,6 +118,7 @@ function ComposePage() {
 
       await finalizeCampaign({ data: { campaignId: created.id } });
       qc.invalidateQueries({ queryKey: ["campaigns"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["messages", created.id] });
       if (sent > 0) {
         toast.success(`Sent ${sent} of ${recipients.length}${failed ? ` · ${failed} failed` : ""}`);

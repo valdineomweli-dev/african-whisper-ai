@@ -40,6 +40,17 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
     if (cErr) throw cErr;
     if (!campaign || campaign.user_id !== userId) throw new Error("Campaign not found");
 
+    // Check credits before sending
+    const { data: profile, error: pErr } = await supabase
+      .from("profiles")
+      .select("credits_remaining")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (pErr) throw pErr;
+    if (!profile || (profile.credits_remaining ?? 0) <= 0) {
+      return { ok: false, error: "No credits remaining. Please upgrade your plan.", noCredits: true };
+    }
+
     // Insert message row (pending)
     const { data: msgRow, error: mErr } = await supabase
       .from("messages")
@@ -94,6 +105,11 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
         .from("campaigns")
         .update({ sent_count: (campaign.sent_count ?? 0) + 1 })
         .eq("id", data.campaignId);
+      // Deduct 1 credit
+      await supabase
+        .from("profiles")
+        .update({ credits_remaining: Math.max(0, (profile.credits_remaining ?? 1) - 1) })
+        .eq("user_id", userId);
     }
 
     return { ok, error: errorText };
