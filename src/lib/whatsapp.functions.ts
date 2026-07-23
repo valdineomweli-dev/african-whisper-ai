@@ -24,13 +24,6 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const token = process.env.FONNTE_TOKEN;
-    if (!token) {
-      throw new Error(
-        "Fonnte is not configured on the server. Missing secret: FONNTE_TOKEN. Add it in Lovable → Project settings → Secrets.",
-      );
-    }
-
     // Verify campaign ownership (RLS also enforces this)
     const { data: campaign, error: cErr } = await supabase
       .from("campaigns")
@@ -40,15 +33,19 @@ export const sendWhatsApp = createServerFn({ method: "POST" })
     if (cErr) throw cErr;
     if (!campaign || campaign.user_id !== userId) throw new Error("Campaign not found");
 
-    // Check credits before sending
+    // Check credits and get user's WhatsApp device token
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
-      .select("credits_remaining")
+      .select("credits_remaining, whatsapp_token, whatsapp_connected")
       .eq("user_id", userId)
       .maybeSingle();
     if (pErr) throw pErr;
     if (!profile || (profile.credits_remaining ?? 0) <= 0) {
       return { ok: false, error: "No credits remaining. Please upgrade your plan.", noCredits: true };
+    }
+    const token = profile.whatsapp_token;
+    if (!token) {
+      return { ok: false, error: "WhatsApp not connected. Connect your WhatsApp in Settings first." };
     }
 
     // Insert message row (pending)

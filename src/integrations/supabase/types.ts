@@ -187,6 +187,9 @@ export type Database = {
           subscription_status: string | null
           user_id: string
           whatsapp_api_key: string | null
+          whatsapp_connected: boolean
+          whatsapp_device: string | null
+          whatsapp_token: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -202,6 +205,9 @@ export type Database = {
           subscription_status?: string | null
           user_id: string
           whatsapp_api_key?: string | null
+          whatsapp_connected?: boolean
+          whatsapp_device?: string | null
+          whatsapp_token?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -217,6 +223,9 @@ export type Database = {
           subscription_status?: string | null
           user_id?: string
           whatsapp_api_key?: string | null
+          whatsapp_connected?: boolean
+          whatsapp_device?: string | null
+          whatsapp_token?: string | null
         }
         Relationships: []
       }
