@@ -108,11 +108,7 @@ function ComposePage() {
           });
           if (res.ok) sent += 1;
           else { failed += 1; if (res.error) lastError = res.error; }
-          if ("noCredits" in res && res.noCredits) {
-            failed += 1;
-            lastError = res.error ?? "No credits remaining. Please upgrade your plan.";
-            break;
-          }
+          if ("noCredits" in res && res.noCredits) break;
         } catch (e) {
           failed += 1;
           lastError = e instanceof Error ? e.message : String(e);
