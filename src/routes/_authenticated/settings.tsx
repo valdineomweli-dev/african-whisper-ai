@@ -26,7 +26,6 @@ function SettingsPage() {
   const [avatar, setAvatar] = useState("");
   const [waKey, setWaKey] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
-  const [showWa, setShowWa] = useState(false);
   const [showGem, setShowGem] = useState(false);
   const [notif, setNotif] = useState({ sent: true, credits: true, weekly: false });
   const [pw, setPw] = useState("");
