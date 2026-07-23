@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { useProfile } from "@/lib/db-hooks";
+import { PLAN_CREDITS, type PlanId } from "@/lib/plans";
 import { createCheckoutSession } from "@/lib/stripe.functions";
 import { Check, Zap, Receipt, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -74,7 +75,8 @@ function BillingPage() {
 
   const currentPlan = profile?.plan ?? "basic";
   const credits = profile?.credits_remaining ?? 500;
-  const limit = 500;
+  const limit = PLAN_CREDITS[currentPlan as PlanId] ?? 500;
+  const isUnlimited = limit >= 999999;
   const used = Math.max(0, limit - credits);
   const currentName = PLANS.find((p) => p.id === currentPlan)?.name ?? "Basic";
   const currentPrice = PLANS.find((p) => p.id === currentPlan)?.price ?? "$14";
@@ -136,10 +138,10 @@ function BillingPage() {
         <h3 className="font-semibold mb-1">Credits this cycle</h3>
         <p className="text-xs text-muted-foreground mb-4">Messages used · {currentName} plan</p>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-2xl font-bold">{used.toLocaleString()}</span>
-          <span className="text-sm text-muted-foreground">of {limit.toLocaleString()}</span>
+          <span className="text-2xl font-bold">{credits.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">remaining</span></span>
+          <span className="text-sm text-muted-foreground">{isUnlimited ? "Unlimited" : `${used.toLocaleString()} of ${limit.toLocaleString()} used`}</span>
         </div>
-        <Progress value={limit ? (used / limit) * 100 : 0} />
+        <Progress value={isUnlimited ? 100 : limit ? (used / limit) * 100 : 0} />
       </Card>
 
       <Card className="overflow-hidden">
